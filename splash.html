@@ -7,23 +7,25 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
     <title>UNLUCKY</title>
-    <script type="module" crossorigin src="/splash.js"></script>
-    <link rel="modulepreload" crossorigin href="/api.js">
-    <link rel="modulepreload" crossorigin href="/phaser.js">
-    <link rel="stylesheet" crossorigin href="/splash.css">
+    <script type="module" crossorigin src="/UnluckyGame/splash.js"></script>
+    <link rel="modulepreload" crossorigin href="/UnluckyGame/modulepreload-polyfill.js">
+    <link rel="modulepreload" crossorigin href="/UnluckyGame/phaser.js">
+    <link rel="modulepreload" crossorigin href="/UnluckyGame/api.js">
+    <link rel="stylesheet" crossorigin href="/UnluckyGame/splash.css">
   </head>
   <body>
     <main class="splash">
       <p class="eyebrow">r/UnluckyGame</p>
       <h1 class="title">UNLUCKY</h1>
-      <p class="tagline">Fix the wheel. Fall anyway.</p>
+      <p class="tagline">Traffic. Hard stop. One more tap.</p>
       <div class="card">
-        <p>Traffic jams in the bike lane. Your rear wheel shears off. Tap it back on with frame-perfect timing — <strong>280 times</strong> without a miss.</p>
-        <p class="small">~0.001% see the ending: one pedal, then sideways.</p>
+        <p>Your rear wheel shears off in a bike-lane jam. Tap it back on with frame-perfect timing — hundreds of times without a miss.</p>
+        <p class="small">Nearly nobody finishes. If you do, you'll know.</p>
       </div>
       <div id="stats" class="stats">Loading chain data…</div>
       <button id="start-button" type="button">Ride</button>
-      <p class="footer">Even winning is unlucky.</p>
+      <p class="preview-link">Compare: <a href="game.html?three=1" id="three-link">3D preview</a></p>
+      <p class="footer">Bad luck is the only win condition.</p>
     </main>
   </body>
 </html>
