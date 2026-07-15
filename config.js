@@ -1,2 +1,0 @@
-const e=new URLSearchParams(window.location.search),a="1"===e.get("easy"),s="1"===e.get("phaser"),t=a?12:280,c=a?28:16,n=a?1.8:2.6,r=a?.03:.05,u=a?4.5:7,k=0,o={curb:5923440,curbDark:3027773,perfect:2278750,perfectHi:8843180,miss:15680580,ink:"#141820",text:"#f8fafc",muted:"#cbd5e1"},b={bestStreak:"unlucky:bestStreak",cutsceneSeen:"unlucky:cutsceneSeen",totalTaps:"unlucky:totalTaps"};export{n as B,o as C,a as E,u as M,s as P,t as R,b as S,c as T,k as a,r as b};
-//# sourceMappingURL=config.js.map
