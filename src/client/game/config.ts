@@ -3,9 +3,6 @@ const params = new URLSearchParams(window.location.search);
 /** Demo-friendly easy mode via ?easy=1 */
 export const EASY_MODE = params.get('easy') === '1';
 
-/** Legacy pixel mode via ?phaser=1 */
-export const PHASER_MODE = params.get('phaser') === '1';
-
 /** Consecutive perfect taps required to unlock the cutscene */
 export const REQUIRED_STREAK = EASY_MODE ? 12 : 280;
 

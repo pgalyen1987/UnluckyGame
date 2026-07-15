@@ -2,35 +2,58 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  padding: 16px 16px 24px;
+  padding: max(12px, env(safe-area-inset-top)) 12px max(20px, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   color: #f8fafc;
   font-family: "Segoe UI", system-ui, sans-serif;
-  text-shadow: 0 2px 8px rgba(20, 24, 32, 0.9);
-  transition: background 0.12s ease;
-  z-index: 5;
+  z-index: 20;
 }
 
 .three-hud.flash {
   background: color-mix(in srgb, var(--flash, #22c55e) 22%, transparent);
 }
 
+.three-panel {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(248, 250, 252, 0.14);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+}
+
+.three-panel.active-chain {
+  border-color: rgba(34, 197, 94, 0.45);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35), 0 0 18px rgba(34, 197, 94, 0.15);
+}
+
 .three-streak {
-  margin: 4px 0 6px;
-  font-size: clamp(16px, 4.2vw, 19px);
+  margin: 0 0 4px;
+  font-size: clamp(17px, 4.5vw, 20px);
   font-weight: 800;
   letter-spacing: 0.02em;
+  color: #f8fafc;
+}
+
+.three-best {
+  margin: 0 0 8px;
+  font-size: clamp(14px, 3.8vw, 16px);
+  font-weight: 700;
+  color: #fde68a;
 }
 
 .three-bar {
-  width: min(300px, 90vw);
+  width: 100%;
   height: 10px;
   border-radius: 999px;
-  background: rgba(20, 24, 32, 0.6);
+  background: rgba(20, 24, 32, 0.75);
   overflow: hidden;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 .three-bar-fill {
@@ -44,17 +67,22 @@
 
 .three-meta {
   margin: 8px 0 0;
-  align-self: flex-start;
   font-size: 12px;
+  line-height: 1.4;
   color: #cbd5e1;
 }
 
 .three-hint {
   margin: auto 0 0;
+  align-self: center;
   font-size: clamp(14px, 3.8vw, 16px);
-  color: #e2e8f0;
+  color: #f1f5f9;
   text-align: center;
-  max-width: 90vw;
+  max-width: 92vw;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.65);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 
 .cutscene-title {
@@ -67,7 +95,7 @@
   letter-spacing: 0.1em;
   color: #f8fafc;
   text-shadow: 0 4px 24px rgba(0, 0, 0, 0.75);
-  z-index: 20;
+  z-index: 30;
   pointer-events: none;
 }
 
@@ -78,7 +106,7 @@
   transform: translateX(-50%);
   color: #e2e8f0;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
-  z-index: 20;
+  z-index: 30;
   pointer-events: none;
   margin: 0;
 }
@@ -98,9 +126,13 @@
   position: relative;
   width: 100%;
   height: 100%;
+  overflow: hidden;
 }
 
 #game-container canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   display: block;
   width: 100%;
   height: 100%;

@@ -81,6 +81,9 @@ export class UnluckyThree {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
+    this.renderer.domElement.style.position = 'absolute';
+    this.renderer.domElement.style.inset = '0';
+    this.renderer.domElement.style.zIndex = '0';
     container.appendChild(this.renderer.domElement);
 
     this.hud = createHud(container);
@@ -342,8 +345,8 @@ export class UnluckyThree {
       this.rideTimer += dt * 1000;
       this.scroll += 2.8 * frame;
       this.bike.frame.rotation.z = Math.sin(this.scroll * 0.06) * 0.03;
-      this.bike.frontWheel.rotation.z -= 0.08 * frame;
-      this.bike.rearWheel.rotation.z -= 0.08 * frame;
+      this.bike.frontWheel.rotation.x -= 0.08 * frame;
+      this.bike.rearWheel.rotation.x -= 0.08 * frame;
       if (this.rideTimer > 2200 + Math.random() * 2000) this.triggerBackup();
     } else if (this.phase === 'backup') {
       this.scroll += 0.35 * frame;

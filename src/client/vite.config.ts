@@ -15,11 +15,9 @@ export default defineConfig(({ mode }) => ({
       input: {
         splash: 'splash.html',
         game: 'game.html',
-        'game-three': 'game-three.html',
       },
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules/phaser')) return 'phaser';
           if (id.includes('node_modules/three')) return 'three';
         },
         entryFileNames: '[name].js',
