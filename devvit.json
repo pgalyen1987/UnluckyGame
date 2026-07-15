@@ -1,6 +1,6 @@
 {
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
-  "name": "unlucky-game",
+  "name": "theunluckygame",
   "post": {
     "dir": "dist/client",
     "entrypoints": {
@@ -35,7 +35,8 @@
     ]
   },
   "triggers": {
-    "onAppInstall": "/internal/on-app-install"
+    "onAppInstall": "/internal/on-app-install",
+    "onAppUpgrade": "/internal/on-app-install"
   },
   "marketingAssets": {
     "icon": "assets/icon.png"

@@ -15,7 +15,7 @@ async function loadStats(): Promise<void> {
   if (state) {
     parts.push(`Chain level: ${state.chainLevel}`);
     if (state.globalUnlocks > 0) {
-      parts.push(`${state.globalUnlocks} fall${state.globalUnlocks === 1 ? '' : 's'} witnessed globally`);
+      parts.push(`${state.globalUnlocks} rare unlock${state.globalUnlocks === 1 ? '' : 's'}`);
     }
     if (state.bestStreak > 0) {
       parts.push(`Your best chain: ${state.bestStreak}`);
@@ -27,10 +27,10 @@ async function loadStats(): Promise<void> {
     if (top) parts.push(`Top chain: u/${top.username} (${top.bestStreak})`);
   }
 
-  statsEl.textContent = parts.length > 0 ? parts.join(' · ') : 'Nobody has fallen yet.';
+  statsEl.textContent = parts.length > 0 ? parts.join(' · ') : 'The lane is empty. For now.';
 }
 
 const greeting = context.username ? `u/${context.username}` : 'rider';
-document.querySelector('.footer')!.textContent = `${greeting} — even winning is unlucky.`;
+document.querySelector('.footer')!.textContent = `${greeting} — bad luck is the only win condition.`;
 
 void loadStats();

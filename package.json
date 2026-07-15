@@ -1,13 +1,15 @@
 {
   "private": true,
-  "name": "unlucky-game",
+  "name": "theunluckygame",
   "version": "0.1.0",
   "license": "BSD-3-Clause",
   "type": "module",
   "scripts": {
     "build:client": "cd src/client && vite build",
+    "build:client:pages": "cd src/client && GITHUB_PAGES=1 vite build",
     "build:server": "cd src/server && vite build",
     "build": "npm run build:client && npm run build:server",
+    "build:pages": "npm run build:client:pages",
     "deploy": "npm run build && devvit upload",
     "dev": "concurrently -k -p \"[{name}]\" -n \"CLIENT,SERVER,DEVVIT\" -c \"blue,green,magenta\" \"npm run dev:client\" \"npm run dev:server\" \"npm run dev:devvit\"",
     "dev:client": "cd src/client && vite build --watch",
@@ -17,13 +19,12 @@
     "type-check": "tsc --build"
   },
   "dependencies": {
-    "@devvit/web": "^0.12.12",
-    "devvit": "^0.12.12",
-    "express": "5.1.0",
+    "@devvit/public-api": "0.12.12",
+    "@devvit/web": "0.12.12",
+    "devvit": "0.12.12",
     "phaser": "3.88.2"
   },
   "devDependencies": {
-    "@types/express": "5.0.1",
     "concurrently": "9.1.2",
     "dotenv-cli": "8.0.0",
     "terser": "5.39.0",

@@ -2,14 +2,24 @@ import { defineConfig } from 'vite';
 import { builtinModules } from 'node:module';
 
 export default defineConfig({
-  ssr: { noExternal: true },
+  ssr: {
+    noExternal: true,
+  },
   logLevel: 'warn',
+  esbuild: {
+    jsx: 'transform',
+    jsxFactory: 'Devvit.createElement',
+    jsxFragment: 'Devvit.Fragment',
+  },
   build: {
     ssr: 'index.ts',
     outDir: '../../dist/server',
     emptyOutDir: true,
-    target: 'node22',
+    target: 'node20',
     sourcemap: true,
+    commonjsOptions: {
+      ignoreDynamicRequires: true,
+    },
     rollupOptions: {
       external: [...builtinModules],
       output: {

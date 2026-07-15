@@ -1,6 +1,10 @@
 import { defineConfig } from 'vite';
 
+/** GitHub project pages live at /UnluckyGame/; Devvit bundles use relative paths. */
+const pagesBase = process.env.GITHUB_PAGES === '1' ? '/UnluckyGame/' : './';
+
 export default defineConfig(({ mode }) => ({
+  base: pagesBase,
   logLevel: 'warn',
   build: {
     outDir: '../../dist/client',
@@ -11,10 +15,12 @@ export default defineConfig(({ mode }) => ({
       input: {
         splash: 'splash.html',
         game: 'game.html',
+        'game-three': 'game-three.html',
       },
       output: {
-        manualChunks: {
-          phaser: ['phaser'],
+        manualChunks(id) {
+          if (id.includes('node_modules/phaser')) return 'phaser';
+          if (id.includes('node_modules/three')) return 'three';
         },
         entryFileNames: '[name].js',
         chunkFileNames: '[name].js',

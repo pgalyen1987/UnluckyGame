@@ -1,0 +1,74 @@
+.three-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  padding: 16px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #f8fafc;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  text-shadow: 0 2px 6px rgba(20, 24, 32, 0.85);
+  transition: background 0.12s ease;
+}
+
+.three-hud.flash {
+  background: color-mix(in srgb, var(--flash, #22c55e) 18%, transparent);
+}
+
+.three-badge {
+  align-self: flex-end;
+  font-family: monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #fde047;
+  background: rgba(66, 32, 6, 0.85);
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.three-streak {
+  margin: 8px 0 6px;
+  font-size: clamp(15px, 4vw, 18px);
+  font-weight: 700;
+}
+
+.three-bar {
+  width: min(280px, 88vw);
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(20, 24, 32, 0.55);
+  overflow: hidden;
+}
+
+.three-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(180deg, #86efac 0%, #22c55e 100%);
+  transition: width 0.15s ease;
+}
+
+.three-meta {
+  margin: 8px 0 0;
+  align-self: flex-start;
+  font-size: 13px;
+  color: #cbd5e1;
+}
+
+.three-hint {
+  margin: auto 0 0;
+  font-size: clamp(13px, 3.6vw, 15px);
+  color: #cbd5e1;
+  text-align: center;
+}
+
+#game-container {
+  position: relative;
+}
+
+#game-container canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { COLORS } from '../config';
 
 /**
- * The "unlucky" ending: you fixed the wheel, stood on one pedal, and fell anyway.
+ * Rare unlock sequence — keep on-screen copy vague until the title card.
  */
 export class Cutscene extends Phaser.Scene {
   private streak = 0;
@@ -22,37 +22,55 @@ export class Cutscene extends Phaser.Scene {
     const cx = width * 0.5;
     const groundY = height * 0.74;
     const scale = Phaser.Math.Clamp(width / 390, 0.75, 1.25);
+    const laneTop = height * 0.42;
 
-    this.cameras.main.setBackgroundColor(COLORS.sky);
+    this.add
+      .tileSprite(0, 0, width, laneTop, 'sky-gradient')
+      .setOrigin(0)
+      .setScrollFactor(0);
 
-    const lane = this.add.graphics();
-    lane.fillStyle(COLORS.lane, 1);
-    lane.fillRect(0, height * 0.42, width, height * 0.58);
-    lane.fillStyle(COLORS.curb, 1);
-    lane.fillRect(0, height * 0.42, width, 8);
+    this.add
+      .tileSprite(0, laneTop * 0.22, width, 88, 'building-near')
+      .setOrigin(0)
+      .setAlpha(0.85);
+
+    this.add
+      .tileSprite(0, laneTop, width, height - laneTop, 'lane-tile')
+      .setOrigin(0)
+      .setTileScale(2);
+
+    this.add.rectangle(0, laneTop, width, 6, COLORS.curb, 1).setOrigin(0);
 
     const bikeContainer = this.add.container(cx, groundY);
-    const bike = this.add.graphics();
-    const rider = this.add.graphics();
-    bikeContainer.add([bike, rider]);
+    const bike = this.add.image(0, 0, 'bike-victory').setScale(scale);
+    bikeContainer.add(bike);
 
-    this.drawVictoryBike(bike, rider, scale, 0);
+    const glow = this.add
+      .graphics()
+      .fillStyle(COLORS.perfect, 0.08)
+      .fillCircle(cx, groundY - 20 * scale, 80 * scale);
+    glow.setDepth(-1);
 
     const subtitle = this.add
       .text(cx, height * 0.12, 'Wheel locked.', {
-        fontFamily: 'system-ui, sans-serif',
+        fontFamily: '"Segoe UI", system-ui, sans-serif',
         fontSize: `${20 * scale}px`,
         color: COLORS.text,
+        stroke: COLORS.ink,
+        strokeThickness: 4,
       })
       .setOrigin(0.5)
       .setAlpha(0);
 
     const title = this.add
       .text(cx, height * 0.5, 'UNLUCKY', {
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: `${48 * scale}px`,
+        fontFamily: '"Segoe UI", system-ui, sans-serif',
+        fontSize: `${52 * scale}px`,
         color: COLORS.text,
         fontStyle: 'bold',
+        stroke: COLORS.ink,
+        strokeThickness: 8,
+        shadow: { offsetX: 0, offsetY: 4, color: '#000000', blur: 8, fill: true },
       })
       .setOrigin(0.5)
       .setAlpha(0)
@@ -60,14 +78,15 @@ export class Cutscene extends Phaser.Scene {
 
     const footer = this.add
       .text(cx, height - 28, `Chain ${this.streak} · ${this.totalTaps.toLocaleString()} lifetime taps`, {
-        fontFamily: 'system-ui, sans-serif',
+        fontFamily: '"Segoe UI", system-ui, sans-serif',
         fontSize: `${12 * scale}px`,
         color: COLORS.muted,
+        stroke: COLORS.ink,
+        strokeThickness: 3,
       })
       .setOrigin(0.5, 1)
       .setAlpha(0);
 
-    // Beat 1 — brief victory pause
     this.tweens.add({
       targets: subtitle,
       alpha: 1,
@@ -75,24 +94,19 @@ export class Cutscene extends Phaser.Scene {
       ease: 'Sine.easeOut',
     });
 
-    // Beat 2 — stand on one pedal (bike tilts)
     this.time.delayedCall(1400, () => {
-      subtitle.setText('One foot. One pedal.');
+      subtitle.setText('…');
       this.tweens.add({
         targets: bikeContainer,
         angle: -28,
         y: groundY + 6 * scale,
         duration: 2200,
         ease: 'Sine.easeInOut',
-        onUpdate: () => {
-          this.drawVictoryBike(bike, rider, scale, bikeContainer.angle);
-        },
       });
     });
 
-    // Beat 3 — fall sideways
     this.time.delayedCall(3800, () => {
-      subtitle.setText('Even winning, you fall.');
+      subtitle.setText('');
       this.tweens.add({
         targets: bikeContainer,
         angle: -92,
@@ -100,13 +114,16 @@ export class Cutscene extends Phaser.Scene {
         x: cx - 20 * scale,
         duration: 900,
         ease: 'Quad.easeIn',
-        onUpdate: () => {
-          this.drawVictoryBike(bike, rider, scale, bikeContainer.angle);
-        },
         onComplete: () => {
-          this.cameras.main.shake(200, 0.006);
+          this.cameras.main.shake(220, 0.007);
           title.setAlpha(1);
           footer.setAlpha(1);
+          this.tweens.add({
+            targets: title,
+            scale: 1.05,
+            duration: 200,
+            yoyo: true,
+          });
         },
       });
     });
@@ -114,7 +131,7 @@ export class Cutscene extends Phaser.Scene {
     this.time.delayedCall(5200, () => {
       this.tweens.add({
         targets: title,
-        alpha: 0.85,
+        alpha: 0.88,
         y: height * 0.48,
         duration: 400,
       });
@@ -134,58 +151,5 @@ export class Cutscene extends Phaser.Scene {
         .setOrigin(0.5)
         .setAlpha(0.7);
     });
-  }
-
-  private drawVictoryBike(g: Phaser.GameObjects.Graphics, rider: Phaser.GameObjects.Graphics, s: number, _tilt: number): void {
-    g.clear();
-    rider.clear();
-
-    const frame = COLORS.bikeFrame;
-    const wheel = COLORS.wheel;
-    const rim = COLORS.rim;
-
-    // Both wheels on — victory state
-    this.strokeWheel(g, -34 * s, 10 * s, 14 * s, wheel, rim);
-    this.strokeWheel(g, 34 * s, 10 * s, 14 * s, wheel, rim);
-
-    g.lineStyle(3 * s, frame, 1);
-    g.beginPath();
-    g.moveTo(-34 * s, 10 * s);
-    g.lineTo(-8 * s, -18 * s);
-    g.lineTo(18 * s, -8 * s);
-    g.lineTo(34 * s, 10 * s);
-    g.strokePath();
-
-    g.fillStyle(frame, 1);
-    g.fillRoundedRect(-18 * s, -28 * s, 14 * s, 4 * s, 2 * s);
-
-    // Rider standing on ONE pedal only (the gag)
-    rider.fillStyle(COLORS.jacket, 1);
-    rider.fillRoundedRect(-4 * s, -38 * s, 18 * s, 22 * s, 3 * s);
-    rider.fillStyle(COLORS.skin, 1);
-    rider.fillCircle(6 * s, -46 * s, 7 * s);
-    rider.fillStyle(COLORS.helmet, 1);
-    rider.fillCircle(6 * s, -48 * s, 8 * s);
-
-    // Left foot on back pedal, right foot dangling
-    rider.fillStyle(COLORS.skin, 1);
-    rider.fillRoundedRect(-16 * s, -2 * s, 10 * s, 4 * s, 2 * s);
-    rider.lineStyle(3 * s, COLORS.skin, 1);
-    rider.lineBetween(8 * s, -16 * s, 14 * s, 6 * s);
-    rider.fillCircle(14 * s, 8 * s, 4 * s);
-  }
-
-  private strokeWheel(
-    g: Phaser.GameObjects.Graphics,
-    x: number,
-    y: number,
-    r: number,
-    fill: number,
-    rim: number
-  ): void {
-    g.fillStyle(fill, 1);
-    g.fillCircle(x, y, r);
-    g.lineStyle(2, rim, 1);
-    g.strokeCircle(x, y, r);
   }
 }

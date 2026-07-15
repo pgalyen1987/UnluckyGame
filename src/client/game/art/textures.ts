@@ -1,10 +1,7 @@
 import Phaser from 'phaser';
+import { registerArt } from './register';
 
-/** Placeholder keys for graphics-driven scenes (no external assets). */
+/** Procedural pixel-art textures — no external sprite downloads. */
 export function registerTextures(scene: Phaser.Scene): void {
-  const g = scene.make.graphics({ x: 0, y: 0 }, false);
-  g.fillStyle(0xffffff, 1);
-  g.fillCircle(4, 4, 4);
-  g.generateTexture('pixel', 8, 8);
-  g.destroy();
+  registerArt(scene);
 }

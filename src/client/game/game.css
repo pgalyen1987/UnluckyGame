@@ -9,7 +9,7 @@ body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #8fa3b8;
+  background: linear-gradient(180deg, #6eb5e8 0%, #9ecae8 45%, #3a404c 100%);
   touch-action: none;
   user-select: none;
 }
