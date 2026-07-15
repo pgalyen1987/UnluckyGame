@@ -3,8 +3,8 @@ const params = new URLSearchParams(window.location.search);
 /** Demo-friendly easy mode via ?easy=1 */
 export const EASY_MODE = params.get('easy') === '1';
 
-/** Three.js proof-of-concept via ?three=1 or game-three.html */
-export const THREE_MODE = params.get('three') === '1';
+/** Legacy pixel mode via ?phaser=1 */
+export const PHASER_MODE = params.get('phaser') === '1';
 
 /** Consecutive perfect taps required to unlock the cutscene */
 export const REQUIRED_STREAK = EASY_MODE ? 12 : 280;

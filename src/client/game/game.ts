@@ -1,4 +1,4 @@
-import { THREE_MODE } from './config';
+import { PHASER_MODE } from './config';
 
 const preventScroll = (): void => {
   const block = (e: Event) => {
@@ -6,6 +6,12 @@ const preventScroll = (): void => {
   };
   document.addEventListener('touchmove', block, { passive: false, capture: true });
   document.addEventListener('wheel', block, { passive: false, capture: true });
+};
+
+const startThree = async (): Promise<void> => {
+  const { UnluckyThree } = await import('./three/UnluckyThree');
+  const container = document.getElementById('game-container');
+  if (container) new UnluckyThree(container);
 };
 
 const startPhaser = async (): Promise<void> => {
@@ -28,10 +34,7 @@ const startPhaser = async (): Promise<void> => {
       height: 844,
       min: { width: 280, height: 400 },
     },
-    input: {
-      activePointers: 1,
-      touch: { capture: true },
-    },
+    input: { activePointers: 1, touch: { capture: true } },
     disableContextMenu: true,
     scene: [Boot, BikeLane, Cutscene],
   };
@@ -47,17 +50,11 @@ const startPhaser = async (): Promise<void> => {
   }
 };
 
-const startThree = async (): Promise<void> => {
-  const { UnluckyThree } = await import('./three/UnluckyThree');
-  const container = document.getElementById('game-container');
-  if (container) new UnluckyThree(container);
-};
-
 document.addEventListener('DOMContentLoaded', () => {
   preventScroll();
-  if (THREE_MODE) {
-    void startThree();
-  } else {
+  if (PHASER_MODE) {
     void startPhaser();
+  } else {
+    void startThree();
   }
 });

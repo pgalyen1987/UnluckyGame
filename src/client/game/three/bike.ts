@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mats } from './materials';
 
 export type BikeRig = {
   root: THREE.Group;
@@ -8,17 +9,14 @@ export type BikeRig = {
 };
 
 function wheel(radius: number): THREE.Group {
-  const tire = new THREE.Mesh(
-    new THREE.TorusGeometry(radius, 0.08, 10, 24),
-    new THREE.MeshToonMaterial({ color: 0x181c24 })
-  );
-  tire.rotation.y = Math.PI / 2;
-  const rim = new THREE.Mesh(
-    new THREE.TorusGeometry(radius * 0.72, 0.03, 8, 20),
-    new THREE.MeshToonMaterial({ color: 0x9aa3b5 })
-  );
-  rim.rotation.y = Math.PI / 2;
   const group = new THREE.Group();
+  const tire = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.07, 16, 32), mats.tire);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(radius * 0.72, 0.028, 12, 28), mats.rim);
+  for (let i = 0; i < 6; i++) {
+    const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.025, radius * 1.25, 0.02), mats.rim);
+    spoke.rotation.z = (i * Math.PI) / 3;
+    group.add(spoke);
+  }
   group.add(tire, rim);
   return group;
 }
@@ -27,47 +25,44 @@ export function createBike(repairMode = false): BikeRig {
   const root = new THREE.Group();
   const frame = new THREE.Group();
 
-  const frameMat = new THREE.MeshToonMaterial({ color: 0xef4444 });
-  const darkMat = new THREE.MeshToonMaterial({ color: 0xb91c1c });
-  const jacketMat = new THREE.MeshToonMaterial({ color: 0x3b82f6 });
-  const skinMat = new THREE.MeshToonMaterial({ color: 0xf5c99a });
-  const helmetMat = new THREE.MeshToonMaterial({ color: 0xf97316 });
+  const frontWheel = wheel(0.44);
+  frontWheel.position.set(0.98, 0.44, 0);
 
-  const frontWheel = wheel(0.42);
-  frontWheel.position.set(0.95, 0.42, 0);
-
-  const rearWheel = wheel(0.42);
-  rearWheel.position.set(-0.95, 0.42, 0);
+  const rearWheel = wheel(0.44);
+  rearWheel.position.set(-0.98, 0.44, 0);
   rearWheel.visible = !repairMode;
 
-  const downTube = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.08, 0.08), frameMat);
-  downTube.position.set(0, 0.72, 0);
+  const downTube = new THREE.Mesh(new THREE.BoxGeometry(1.08, 0.09, 0.09), mats.frame);
+  downTube.position.set(0, 0.74, 0);
   downTube.rotation.z = -0.55;
 
-  const seatTube = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.55, 0.08), darkMat);
-  seatTube.position.set(-0.15, 0.95, 0);
+  const seatTube = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.58, 0.09), mats.frameDark);
+  seatTube.position.set(-0.16, 0.98, 0);
   seatTube.rotation.z = 0.35;
 
-  const topTube = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.07, 0.07), frameMat);
-  topTube.position.set(0.05, 1.05, 0);
+  const topTube = new THREE.Mesh(new THREE.BoxGeometry(0.88, 0.08, 0.08), mats.frame);
+  topTube.position.set(0.04, 1.08, 0);
   topTube.rotation.z = 0.12;
 
-  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.06, 0.06), darkMat);
-  handle.position.set(0.72, 1.18, 0);
+  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.07, 0.07), mats.frameDark);
+  handle.position.set(0.74, 1.22, 0);
   handle.rotation.z = -0.2;
 
-  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.06, 0.12), darkMat);
-  seat.position.set(-0.18, 1.08, 0);
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.07, 0.14), mats.frameDark);
+  seat.position.set(-0.2, 1.1, 0);
 
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.42, 0.22), jacketMat);
-  torso.position.set(-0.02, 1.35, 0);
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.44, 0.24), mats.jacket);
+  torso.position.set(-0.02, 1.38, 0);
 
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 12), skinMat);
-  head.position.set(0.02, 1.68, 0);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 16), mats.skin);
+  head.position.set(0.02, 1.72, 0);
 
-  const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 12), helmetMat);
-  helmet.position.set(0.02, 1.72, 0);
+  const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.19, 16, 16), mats.helmet);
+  helmet.position.set(0.02, 1.76, 0);
   helmet.scale.set(1, 0.82, 1);
+
+  const pedal = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.04, 0.08), mats.rim);
+  pedal.position.set(-0.05, 0.48, 0.12);
 
   frame.add(
     downTube,
@@ -78,56 +73,46 @@ export function createBike(repairMode = false): BikeRig {
     torso,
     head,
     helmet,
+    pedal,
     frontWheel,
     rearWheel
   );
   root.add(frame);
-
   return { root, frame, frontWheel, rearWheel };
 }
 
+/** Spinning wheel only — green notch rotates; fixed target is separate. */
 export function createRepairWheel(): THREE.Group {
   const group = new THREE.Group();
-  const tire = new THREE.Mesh(
-    new THREE.TorusGeometry(0.95, 0.14, 14, 36),
-    new THREE.MeshToonMaterial({ color: 0x181c24 })
-  );
-  tire.rotation.y = Math.PI / 2;
+  group.name = 'repair-wheel';
 
-  const rim = new THREE.Mesh(
-    new THREE.TorusGeometry(0.72, 0.05, 10, 28),
-    new THREE.MeshToonMaterial({ color: 0x9aa3b5 })
-  );
-  rim.rotation.y = Math.PI / 2;
+  const tire = new THREE.Mesh(new THREE.TorusGeometry(1, 0.13, 20, 48), mats.tire);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.76, 0.05, 14, 36), mats.rim);
 
-  for (let i = 0; i < 8; i++) {
-    const spoke = new THREE.Mesh(
-      new THREE.BoxGeometry(0.04, 0.62, 0.04),
-      new THREE.MeshToonMaterial({ color: 0x6b7280 })
-    );
-    spoke.rotation.z = (i * Math.PI) / 4;
+  for (let i = 0; i < 10; i++) {
+    const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.72, 0.025), mats.rim);
+    spoke.rotation.z = (i * Math.PI) / 5;
     group.add(spoke);
   }
 
-  const notch = new THREE.Mesh(
-    new THREE.BoxGeometry(0.08, 0.42, 0.08),
-    new THREE.MeshBasicMaterial({ color: 0x22c55e })
-  );
-  notch.position.y = 0.78;
+  const notch = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.52, 0.14), mats.green);
+  notch.position.y = 0.82;
   notch.name = 'notch';
 
-  const marker = new THREE.Mesh(
-    new THREE.BoxGeometry(0.06, 0.28, 0.06),
-    new THREE.MeshBasicMaterial({ color: 0x86efac })
-  );
-  marker.position.set(0, 1.18, 0);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.08, 16), mats.rim);
+  hub.rotation.x = Math.PI / 2;
 
-  const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(1.02, 0.03, 8, 48),
-    new THREE.MeshBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.35 })
-  );
-  ring.rotation.x = Math.PI / 2;
-
-  group.add(tire, rim, notch, marker, ring);
+  group.add(tire, rim, hub, notch);
   return group;
+}
+
+export function createVictoryBike(): THREE.Group {
+  const bike = createBike(false);
+  const foot = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.1), mats.skin);
+  foot.position.set(-0.22, 0.52, 0.15);
+  const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.32, 0.06), mats.skin);
+  leg.position.set(0.08, 0.72, 0.1);
+  leg.rotation.z = 0.35;
+  bike.frame.add(foot, leg);
+  return bike.root;
 }

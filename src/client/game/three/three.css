@@ -8,63 +8,96 @@
   align-items: center;
   color: #f8fafc;
   font-family: "Segoe UI", system-ui, sans-serif;
-  text-shadow: 0 2px 6px rgba(20, 24, 32, 0.85);
+  text-shadow: 0 2px 8px rgba(20, 24, 32, 0.9);
   transition: background 0.12s ease;
+  z-index: 5;
 }
 
 .three-hud.flash {
-  background: color-mix(in srgb, var(--flash, #22c55e) 18%, transparent);
-}
-
-.three-badge {
-  align-self: flex-end;
-  font-family: monospace;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  color: #fde047;
-  background: rgba(66, 32, 6, 0.85);
-  padding: 4px 8px;
-  border-radius: 999px;
+  background: color-mix(in srgb, var(--flash, #22c55e) 22%, transparent);
 }
 
 .three-streak {
-  margin: 8px 0 6px;
-  font-size: clamp(15px, 4vw, 18px);
-  font-weight: 700;
+  margin: 4px 0 6px;
+  font-size: clamp(16px, 4.2vw, 19px);
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 .three-bar {
-  width: min(280px, 88vw);
-  height: 8px;
+  width: min(300px, 90vw);
+  height: 10px;
   border-radius: 999px;
-  background: rgba(20, 24, 32, 0.55);
+  background: rgba(20, 24, 32, 0.6);
   overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 .three-bar-fill {
   height: 100%;
   width: 0%;
   border-radius: inherit;
-  background: linear-gradient(180deg, #86efac 0%, #22c55e 100%);
+  background: linear-gradient(180deg, #bbf7d0 0%, #22c55e 55%, #15803d 100%);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.55);
   transition: width 0.15s ease;
 }
 
 .three-meta {
   margin: 8px 0 0;
   align-self: flex-start;
-  font-size: 13px;
+  font-size: 12px;
   color: #cbd5e1;
 }
 
 .three-hint {
   margin: auto 0 0;
-  font-size: clamp(13px, 3.6vw, 15px);
-  color: #cbd5e1;
+  font-size: clamp(14px, 3.8vw, 16px);
+  color: #e2e8f0;
   text-align: center;
+  max-width: 90vw;
+}
+
+.cutscene-title {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  font-size: clamp(42px, 12vw, 64px);
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  color: #f8fafc;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.75);
+  z-index: 20;
+  pointer-events: none;
+}
+
+.cutscene-subtitle,
+.cutscene-footer {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #e2e8f0;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+  z-index: 20;
+  pointer-events: none;
+  margin: 0;
+}
+
+.cutscene-subtitle {
+  top: 14%;
+  font-size: clamp(18px, 5vw, 24px);
+}
+
+.cutscene-footer {
+  bottom: 24px;
+  font-size: 12px;
+  color: #cbd5e1;
 }
 
 #game-container {
   position: relative;
+  width: 100%;
+  height: 100%;
 }
 
 #game-container canvas {
