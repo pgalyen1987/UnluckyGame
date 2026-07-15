@@ -1,27 +1,28 @@
 import * as THREE from 'three';
 import { TIMING_WINDOW_DEG } from '../config';
-import { mats } from './materials';
+import { getMaterials } from './materials';
 
 /**
  * Fixed alignment marks — NOT parented to the spinning wheel.
  * Top post + glow ring + acceptance arc.
  */
 export function createTimingTarget(): THREE.Group {
+  const m = getMaterials();
   const root = new THREE.Group();
   root.name = 'timing-target';
 
   const ring = new THREE.Mesh(
     new THREE.TorusGeometry(1.05, 0.045, 12, 64),
-    mats.greenSoft
+    m.greenSoft
   );
 
-  const topPost = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.55, 0.12), mats.green);
+  const topPost = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.55, 0.12), m.green);
   topPost.position.y = 1.32;
 
-  const topCap = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.1, 0.28), mats.green);
+  const topCap = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.1, 0.28), m.green);
   topCap.position.y = 1.62;
 
-  const chevron = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.28, 3), mats.green);
+  const chevron = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.28, 3), m.green);
   chevron.position.y = 1.08;
   chevron.rotation.z = Math.PI;
 

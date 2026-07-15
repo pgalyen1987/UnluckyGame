@@ -13,7 +13,8 @@ import { createBike, createRepairWheel } from './bike';
 import { runCutscene } from './cutscene';
 import { createHud, flashHud, updateHud, type HudRefs } from './hud';
 import { createBurst } from './particles';
-import { createSky } from './sky';
+import { applyEnvironment, getMaterials } from './materials';
+import { createSky, updateSkyTime } from './sky';
 import { createTimingTarget } from './timingTarget';
 import { createWorld, scrollWorld } from './world';
 
@@ -28,7 +29,7 @@ export class UnluckyThree {
   private readonly container: HTMLElement;
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene: THREE.Scene;
-  private readonly camera: THREE.OrthographicCamera;
+  private readonly camera: THREE.PerspectiveCamera;
   private readonly clock = new THREE.Clock();
 
   private hud!: HudRefs;
@@ -39,6 +40,7 @@ export class UnluckyThree {
   private repairWheel!: THREE.Group;
   private timingTarget!: THREE.Group;
   private groundShadow!: THREE.Mesh;
+  private sky!: THREE.Mesh;
 
   private phase: Phase = 'ride';
   private scroll = 0;
@@ -61,18 +63,10 @@ export class UnluckyThree {
   constructor(container: HTMLElement) {
     this.container = container;
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0x9ecae8, 0.028);
+    this.scene.fog = new THREE.FogExp2(0xa8c8e0, 0.022);
 
     const aspect = container.clientWidth / Math.max(container.clientHeight, 1);
-    const frustum = 6.4;
-    this.camera = new THREE.OrthographicCamera(
-      (-frustum * aspect) / 2,
-      (frustum * aspect) / 2,
-      frustum / 2,
-      -frustum / 2,
-      0.1,
-      120
-    );
+    this.camera = new THREE.PerspectiveCamera(34, aspect, 0.1, 120);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -80,11 +74,14 @@ export class UnluckyThree {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.toneMappingExposure = 1.12;
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.domElement.style.position = 'absolute';
     this.renderer.domElement.style.inset = '0';
     this.renderer.domElement.style.zIndex = '0';
     container.appendChild(this.renderer.domElement);
+
+    applyEnvironment(this.scene, this.renderer);
 
     this.hud = createHud(container);
     this.loadLocalProgress();
@@ -114,11 +111,14 @@ export class UnluckyThree {
   }
 
   private setupLights(): void {
-    this.scene.add(new THREE.HemisphereLight(0xb8dcff, 0x3a404c, 0.65));
-    const sun = new THREE.DirectionalLight(0xfff0c8, 1.35);
+    this.scene.add(new THREE.AmbientLight(0x8eb4d4, 0.22));
+    this.scene.add(new THREE.HemisphereLight(0xb8dcff, 0x3a404c, 0.55));
+    const sun = new THREE.DirectionalLight(0xfff4dc, 1.55);
     sun.position.set(8, 14, 6);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.bias = -0.0002;
+    sun.shadow.normalBias = 0.02;
     sun.shadow.camera.near = 0.5;
     sun.shadow.camera.far = 40;
     sun.shadow.camera.left = -12;
@@ -126,13 +126,18 @@ export class UnluckyThree {
     sun.shadow.camera.top = 12;
     sun.shadow.camera.bottom = -2;
     this.scene.add(sun);
-    const rim = new THREE.DirectionalLight(0x7eb8e8, 0.45);
+    const rim = new THREE.DirectionalLight(0x7eb8e8, 0.35);
     rim.position.set(-6, 3, -4);
     this.scene.add(rim);
+
+    const fill = new THREE.DirectionalLight(0xffe8c8, 0.28);
+    fill.position.set(2, 2, 10);
+    this.scene.add(fill);
   }
 
   private setupScene(): void {
-    this.scene.add(createSky());
+    this.sky = createSky();
+    this.scene.add(this.sky);
     this.world = createWorld();
     this.scene.add(this.world.root);
 
@@ -152,14 +157,21 @@ export class UnluckyThree {
     this.repairStage.visible = false;
     this.repairStage.position.set(0, 0.15, 1.2);
 
+    const repairPad = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.65, 1.75, 0.08, 32),
+      getMaterials().curb
+    );
+    repairPad.position.y = -0.04;
+    repairPad.receiveShadow = true;
+
     this.repairWheel = createRepairWheel();
     this.timingTarget = createTimingTarget();
-    this.repairStage.add(this.repairWheel, this.timingTarget);
+    this.repairStage.add(repairPad, this.repairWheel, this.timingTarget);
     this.scene.add(this.repairStage);
 
     this.groundShadow = new THREE.Mesh(
       new THREE.CircleGeometry(1.15, 32),
-      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25 })
+      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.32 })
     );
     this.groundShadow.rotation.x = -Math.PI / 2;
     this.groundShadow.position.set(-2.2, 0.02, 0);
@@ -176,12 +188,8 @@ export class UnluckyThree {
   private onResize(): void {
     const w = this.container.clientWidth;
     const h = Math.max(this.container.clientHeight, 1);
-    const aspect = w / h;
-    const frustum = this.phase === 'repair' ? 4.2 : 6.4;
-    this.camera.left = (-frustum * aspect) / 2;
-    this.camera.right = (frustum * aspect) / 2;
-    this.camera.top = frustum / 2;
-    this.camera.bottom = -frustum / 2;
+    this.camera.aspect = w / h;
+    this.camera.fov = this.phase === 'repair' ? 30 : 34;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
   }
@@ -362,6 +370,7 @@ export class UnluckyThree {
 
     this.layoutBackup();
     scrollWorld(this.world.farLayer, this.world.nearLayer, this.world.props, this.world.dashes, this.scroll);
+    updateSkyTime(this.sky, this.clock.elapsedTime);
 
     this.progressSyncTimer += dt * 1000;
     if (this.progressSyncTimer > 8000) {
