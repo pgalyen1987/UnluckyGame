@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getMaterials } from './materials';
+import { createTireMaterial, getMaterials } from './materials';
 
 const BUILDING_SEEDS = [14, 22, 31, 18, 27, 35, 19, 24, 33, 16, 29, 21, 38, 42, 11];
 
@@ -50,7 +50,8 @@ export function createCar(dark = false): THREE.Group {
   const cabin = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.32, 0.62), bodyMat);
   cabin.position.set(-0.08, 0.72, 0);
   cabin.castShadow = true;
-  const wheelGeo = new THREE.CylinderGeometry(0.16, 0.16, 0.14, 16);
+  const wheelGeo = new THREE.CylinderGeometry(0.16, 0.16, 0.14, 20);
+  const tireMat = createTireMaterial(1.8, 3);
   const positions = [
     [0.48, 0.16, 0.34],
     [0.48, 0.16, -0.34],
@@ -58,7 +59,7 @@ export function createCar(dark = false): THREE.Group {
     [-0.48, 0.16, -0.34],
   ] as const;
   for (const [wx, wy, wz] of positions) {
-    const w = new THREE.Mesh(wheelGeo, m.tire);
+    const w = new THREE.Mesh(wheelGeo, tireMat);
     w.rotation.z = Math.PI / 2;
     w.position.set(wx, wy, wz);
     w.castShadow = true;

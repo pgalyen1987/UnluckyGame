@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { makeAsphaltMaps, makeConcreteNormal } from './textures';
+import { makeAsphaltMaps, makeConcreteNormal, makeTireMaps } from './textures';
 
 export type GameMaterials = ReturnType<typeof createMaterials>;
 
 export function createMaterials(): Record<string, THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial> {
   const asphaltMaps = makeAsphaltMaps();
   const concreteNormal = makeConcreteNormal();
+  const tireMaps = makeTireMaps();
 
   const asphaltWet = new THREE.MeshPhysicalMaterial({
     color: 0x4a5264,
@@ -56,12 +57,40 @@ export function createMaterials(): Record<string, THREE.MeshStandardMaterial | T
     }),
     frame: new THREE.MeshPhysicalMaterial({ color: 0xe63946, roughness: 0.32, metalness: 0.55, clearcoat: 0.4 }),
     frameDark: new THREE.MeshPhysicalMaterial({ color: 0x9f1239, roughness: 0.38, metalness: 0.45 }),
-    tire: new THREE.MeshStandardMaterial({ color: 0x101318, roughness: 0.96, metalness: 0 }),
+    tire: new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      map: tireMaps.map,
+      normalMap: tireMaps.normal,
+      normalScale: new THREE.Vector2(0.55, 0.55),
+      roughnessMap: tireMaps.rough,
+      roughness: 0.92,
+      metalness: 0,
+    }),
     rim: new THREE.MeshPhysicalMaterial({ color: 0xd1d9e6, roughness: 0.18, metalness: 0.92, clearcoat: 0.5 }),
-    jacket: new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.82, metalness: 0 }),
-    pants: new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.88 }),
-    skin: new THREE.MeshStandardMaterial({ color: 0xe8b896, roughness: 0.72, metalness: 0 }),
-    helmet: new THREE.MeshPhysicalMaterial({ color: 0xf97316, roughness: 0.35, metalness: 0.15, clearcoat: 0.55 }),
+    chain: new THREE.MeshStandardMaterial({ color: 0x2a3038, roughness: 0.45, metalness: 0.75 }),
+    rubber: new THREE.MeshStandardMaterial({ color: 0x141820, roughness: 0.94, metalness: 0 }),
+    saddle: new THREE.MeshStandardMaterial({ color: 0x111318, roughness: 0.72, metalness: 0.05 }),
+    grip: new THREE.MeshStandardMaterial({ color: 0x0a0c10, roughness: 0.96, metalness: 0 }),
+    shoe: new THREE.MeshPhysicalMaterial({ color: 0xf1f5f9, roughness: 0.55, metalness: 0.08, clearcoat: 0.2 }),
+    glove: new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.88, metalness: 0 }),
+    jacket: new THREE.MeshPhysicalMaterial({
+      color: 0x1d4ed8,
+      roughness: 0.78,
+      metalness: 0.02,
+      sheen: 0.35,
+      sheenRoughness: 0.6,
+      sheenColor: new THREE.Color(0x60a5fa),
+    }),
+    pants: new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9, metalness: 0 }),
+    skin: new THREE.MeshStandardMaterial({ color: 0xd4a574, roughness: 0.68, metalness: 0 }),
+    helmet: new THREE.MeshPhysicalMaterial({ color: 0xf97316, roughness: 0.32, metalness: 0.12, clearcoat: 0.65 }),
+    visor: new THREE.MeshPhysicalMaterial({
+      color: 0x1e293b,
+      roughness: 0.15,
+      metalness: 0.2,
+      transparent: true,
+      opacity: 0.75,
+    }),
     tree: new THREE.MeshStandardMaterial({ color: 0x2f6b3a, roughness: 0.92 }),
     trunk: new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.95 }),
     lamp: new THREE.MeshStandardMaterial({ color: 0x3a4250, roughness: 0.35, metalness: 0.65 }),
@@ -89,6 +118,22 @@ let mats: GameMaterials | null = null;
 export function getMaterials(): GameMaterials {
   if (!mats) mats = createMaterials();
   return mats;
+}
+
+/** Clone tire material with tread repeat tuned for torus wheels. */
+export function createTireMaterial(ringRepeat: number, tubeRepeat = 1): THREE.MeshStandardMaterial {
+  const base = getMaterials().tire as THREE.MeshStandardMaterial;
+  const mat = base.clone();
+  const cloneMap = (tex: THREE.Texture | null | undefined): THREE.Texture | undefined => {
+    if (!tex) return undefined;
+    const t = tex.clone();
+    t.repeat.set(ringRepeat, tubeRepeat);
+    return t;
+  };
+  mat.map = cloneMap(base.map);
+  mat.normalMap = cloneMap(base.normalMap);
+  mat.roughnessMap = cloneMap(base.roughnessMap);
+  return mat;
 }
 
 export function applyEnvironment(scene: THREE.Scene, renderer: THREE.WebGLRenderer): void {
