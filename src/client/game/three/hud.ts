@@ -63,5 +63,11 @@ export function updateHud(
 export function flashHud(hud: HudRefs, color: string): void {
   hud.root.style.setProperty('--flash', color);
   hud.root.classList.add('flash');
+  hud.panel.classList.add('pop');
   window.setTimeout(() => hud.root.classList.remove('flash'), 140);
+  window.setTimeout(() => hud.panel.classList.remove('pop'), 280);
+}
+
+export function setHintPulse(hud: HudRefs, on: boolean): void {
+  hud.hint.classList.toggle('pulse', on);
 }

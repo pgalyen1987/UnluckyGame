@@ -9,21 +9,37 @@ import {
   TARGET_ANGLE,
   TIMING_WINDOW_DEG,
 } from '../config';
-import { createBike, createRepairWheel } from './bike';
+import {
+  attachSketchRearWheel,
+  createRepairArrows,
+  createRepairWheel,
+  createSketchBike,
+  createSketchRideBike,
+  getSketchRearHubLocal,
+  SKETCH_REPAIR_WHEEL_R,
+  SKETCH_WHEEL_ATTACH_SCALE,
+  updateBikeMotion,
+  type BikeRig,
+} from './bike';
 import { runCutscene } from './cutscene';
-import { createHud, flashHud, updateHud, type HudRefs } from './hud';
-import { createBurst } from './particles';
-import { applyEnvironment, getMaterials } from './materials';
+import { createHud, flashHud, setHintPulse, updateHud, type HudRefs } from './hud';
+import { createBurst, createDustTrail, createSparkRing, type DustSystem } from './particles';
+import { applyEnvironment } from './materials';
+import { createPostFx, type PostFx } from './postfx';
 import { createSky, updateSkyTime } from './sky';
-import { createTimingTarget } from './timingTarget';
+import { createTimingTarget, updateTimingTarget } from './timingTarget';
 import { createWorld, scrollWorld } from './world';
 
-type Phase = 'ride' | 'backup' | 'brake' | 'repair' | 'cutscene';
+type Phase = 'ride' | 'backup' | 'brake' | 'repair' | 'reassemble' | 'cutscene';
 
-const RIDE_CAM = new THREE.Vector3(9, 3.4, 11);
-const RIDE_LOOK = new THREE.Vector3(-1.5, 1.3, 0);
-const REPAIR_CAM = new THREE.Vector3(0, 1.05, 5.2);
-const REPAIR_LOOK = new THREE.Vector3(0, 0.85, 0);
+const RIDE_CAM = new THREE.Vector3(8.5, 2.6, 10);
+const RIDE_LOOK = new THREE.Vector3(-1.8, 1.05, 0);
+const REPAIR_CAM = new THREE.Vector3(0, 1.15, 7.2);
+const REPAIR_LOOK = new THREE.Vector3(-0.35, 0.78, 0);
+
+const REASSEMBLE_DURATION = 1.35;
+const REASSEMBLE_PAUSE = 0.55;
+const REPAIR_WHEEL_START = new THREE.Vector3(1.15, SKETCH_REPAIR_WHEEL_R, 0);
 
 export class UnluckyThree {
   private readonly container: HTMLElement;
@@ -31,16 +47,21 @@ export class UnluckyThree {
   private readonly scene: THREE.Scene;
   private readonly camera: THREE.PerspectiveCamera;
   private readonly clock = new THREE.Clock();
+  private postfx!: PostFx;
 
   private hud!: HudRefs;
   private world!: ReturnType<typeof createWorld>;
-  private bike!: ReturnType<typeof createBike>;
+  private bike!: BikeRig;
   private backupBikes: THREE.Group[] = [];
   private repairStage!: THREE.Group;
+  private sketchBike!: THREE.Group;
+  private repairArrows!: THREE.Group;
   private repairWheel!: THREE.Group;
   private timingTarget!: THREE.Group;
-  private groundShadow!: THREE.Mesh;
+  private groundLine!: THREE.Mesh;
   private sky!: THREE.Mesh;
+  private dust!: DustSystem;
+  private repairLight!: THREE.PointLight;
 
   private phase: Phase = 'ride';
   private scroll = 0;
@@ -58,6 +79,12 @@ export class UnluckyThree {
   private camPos = RIDE_CAM.clone();
   private camLook = RIDE_LOOK.clone();
   private shake = 0;
+  private fovPunch = 0;
+  private bloomKick = 0;
+  private reassembleT = 0;
+  private reassemblePause = 0;
+  private reassembleSnapped = false;
+  private reassembleHub = new THREE.Vector3();
   private resizeObserver?: ResizeObserver;
 
   constructor(container: HTMLElement) {
@@ -73,8 +100,8 @@ export class UnluckyThree {
     this.renderer.setSize(container.clientWidth, container.clientHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.12;
+    // Tone mapping handled by OutputPass in the composer.
+    this.renderer.toneMapping = THREE.NoToneMapping;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.domElement.style.position = 'absolute';
     this.renderer.domElement.style.inset = '0';
@@ -82,6 +109,7 @@ export class UnluckyThree {
     container.appendChild(this.renderer.domElement);
 
     applyEnvironment(this.scene, this.renderer);
+    this.postfx = createPostFx(this.renderer, this.scene, this.camera);
 
     this.hud = createHud(container);
     this.loadLocalProgress();
@@ -141,12 +169,12 @@ export class UnluckyThree {
     this.world = createWorld();
     this.scene.add(this.world.root);
 
-    this.bike = createBike(false);
+    this.bike = createSketchRideBike(false);
     this.bike.root.position.set(-2.2, 0, 0);
     this.scene.add(this.bike.root);
 
     for (let i = 0; i < 10; i++) {
-      const b = createBike(false).root;
+      const b = createSketchRideBike(false).root;
       b.visible = false;
       b.scale.setScalar(0.82);
       this.backupBikes.push(b);
@@ -155,27 +183,47 @@ export class UnluckyThree {
 
     this.repairStage = new THREE.Group();
     this.repairStage.visible = false;
-    this.repairStage.position.set(0, 0.15, 1.2);
+    this.repairStage.position.set(0, 0, 1.2);
 
-    const repairPad = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.65, 1.75, 0.08, 32),
-      getMaterials().curb
+    const groundLine = new THREE.Mesh(
+      new THREE.BoxGeometry(5.6, 0.012, 0.02),
+      new THREE.MeshBasicMaterial({ color: 0x94a3b8 })
     );
-    repairPad.position.y = -0.04;
-    repairPad.receiveShadow = true;
+    groundLine.position.set(0, 0.01, 0);
+
+    this.sketchBike = createSketchBike();
+    this.sketchBike.position.set(-2.15, 0, 0);
+
+    this.repairArrows = createRepairArrows();
+    this.repairArrows.position.set(-0.55, 0, 0);
 
     this.repairWheel = createRepairWheel();
+    this.repairWheel.position.copy(REPAIR_WHEEL_START);
+
     this.timingTarget = createTimingTarget();
-    this.repairStage.add(repairPad, this.repairWheel, this.timingTarget);
+    this.timingTarget.position.copy(this.repairWheel.position);
+
+    this.repairLight = new THREE.PointLight(0x86efac, 0.9, 5, 2);
+    this.repairLight.position.set(1.15, 1.2, 1.2);
+
+    this.repairStage.add(
+      groundLine,
+      this.sketchBike,
+      this.repairArrows,
+      this.repairWheel,
+      this.timingTarget,
+      this.repairLight
+    );
     this.scene.add(this.repairStage);
 
-    this.groundShadow = new THREE.Mesh(
-      new THREE.CircleGeometry(1.15, 32),
-      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.32 })
+    this.groundLine = new THREE.Mesh(
+      new THREE.BoxGeometry(1.8, 0.01, 0.02),
+      new THREE.MeshBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.55 })
     );
-    this.groundShadow.rotation.x = -Math.PI / 2;
-    this.groundShadow.position.set(-2.2, 0.02, 0);
-    this.scene.add(this.groundShadow);
+    this.groundLine.position.set(-2.2, 0.01, 0);
+    this.scene.add(this.groundLine);
+
+    this.dust = createDustTrail(this.scene);
   }
 
   private bindInput(): void {
@@ -189,9 +237,10 @@ export class UnluckyThree {
     const w = this.container.clientWidth;
     const h = Math.max(this.container.clientHeight, 1);
     this.camera.aspect = w / h;
-    this.camera.fov = this.phase === 'repair' ? 30 : 34;
+    this.camera.fov = this.phase === 'repair' || this.phase === 'reassemble' ? 30 : 34;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
+    this.postfx.resize(w, h);
   }
 
   private resetRide(): void {
@@ -201,13 +250,24 @@ export class UnluckyThree {
     this.backupDepth = 0;
     this.streak = 0;
     this.spinSpeed = BASE_SPIN_SPEED;
+    this.reassembleT = 0;
+    this.reassemblePause = 0;
+    this.reassembleSnapped = false;
+    this.repairWheel.visible = true;
+    this.repairArrows.visible = true;
+    this.repairArrows.scale.setScalar(1);
+    this.timingTarget.visible = true;
+    this.timingTarget.scale.setScalar(1);
+    this.sketchBike.getObjectByName('attached-rear-wheel')?.removeFromParent();
     this.repairStage.visible = false;
     this.bike.root.visible = true;
     this.bike.rearWheel.visible = true;
+    this.groundLine.visible = true;
     this.camPos.copy(RIDE_CAM);
     this.camLook.copy(RIDE_LOOK);
     this.onResize();
     this.updateHud();
+    setHintPulse(this.hud, false);
     this.layoutBackup();
   }
 
@@ -221,6 +281,8 @@ export class UnluckyThree {
       this.brakeTimer = 0;
       this.bike.frame.rotation.z = -0.1;
       this.shake = 0.16;
+      this.bloomKick = 0.25;
+      createBurst(this.scene, 0xcbd5e1, 22, new THREE.Vector3(-2.2, 0.3, 0));
       this.updateHud('Hard stop!');
     }, 900);
   }
@@ -230,17 +292,30 @@ export class UnluckyThree {
     this.streak = 0;
     this.spinSpeed = BASE_SPIN_SPEED;
     this.wheelAngle = 60 + Math.random() * 240;
-    this.repairWheel.rotation.z = THREE.MathUtils.degToRad(this.wheelAngle);
-    this.bike.rearWheel.visible = false;
+    this.repairWheel.position.copy(REPAIR_WHEEL_START);
+    this.repairWheel.scale.setScalar(1);
+    this.repairWheel.visible = true;
+    this.repairWheel.rotation.x = THREE.MathUtils.degToRad(this.wheelAngle);
+    const notch = this.repairWheel.getObjectByName('notch');
+    if (notch) notch.visible = true;
+    this.repairArrows.visible = true;
+    this.repairArrows.scale.setScalar(1);
+    this.timingTarget.visible = true;
+    this.timingTarget.scale.setScalar(1);
+    this.sketchBike.getObjectByName('attached-rear-wheel')?.removeFromParent();
+    this.reassembleHub.copy(this.sketchBike.position).add(getSketchRearHubLocal());
+    this.bike.root.visible = false;
     this.repairStage.visible = true;
+    this.groundLine.visible = false;
     this.camPos.copy(REPAIR_CAM);
     this.camLook.copy(REPAIR_LOOK);
     this.onResize();
+    setHintPulse(this.hud, true);
     this.updateHud('TAP when the green line hits the top mark');
   }
 
   private onTap(): void {
-    if (this.phase === 'cutscene') return;
+    if (this.phase === 'cutscene' || this.phase === 'reassemble') return;
 
     if (this.phase === 'ride' || this.phase === 'backup' || this.phase === 'brake') return;
     if (this.phase !== 'repair') return;
@@ -249,7 +324,7 @@ export class UnluckyThree {
     localStorage.setItem(STORAGE_KEYS.totalTaps, String(this.totalTaps));
 
     const diff = this.angleDistance(this.wheelAngle, TARGET_ANGLE);
-    const origin = new THREE.Vector3(0, 0.85, 1.2);
+    const origin = new THREE.Vector3(1.15, SKETCH_REPAIR_WHEEL_R + 0.15, 1.2);
 
     if (diff <= TIMING_WINDOW_DEG / 2) {
       this.streak += 1;
@@ -260,15 +335,18 @@ export class UnluckyThree {
       }
       this.spinSpeed = Math.min(MAX_SPIN_SPEED, this.spinSpeed + SPIN_ACCEL);
       flashHud(this.hud, '#22c55e');
-      createBurst(this.scene, 0xfde047, 18, origin);
+      createBurst(this.scene, 0xfde047, 20, origin);
+      createSparkRing(this.scene, origin, 0x86efac);
       this.shake = 0.04;
+      this.fovPunch = 1.8;
+      this.bloomKick = 0.35;
       this.updateHud('Hit!');
       window.setTimeout(() => {
         if (this.phase === 'repair') this.updateHud('TAP when the green line hits the top mark');
       }, 350);
 
       if (this.streak >= REQUIRED_STREAK) {
-        void this.unlockCutscene();
+        this.startReassemble();
       } else {
         this.updateHud();
       }
@@ -277,12 +355,44 @@ export class UnluckyThree {
       this.streak = 0;
       this.spinSpeed = BASE_SPIN_SPEED;
       flashHud(this.hud, '#ef4444');
-      createBurst(this.scene, 0xef4444, 10, origin);
+      createBurst(this.scene, 0xef4444, 12, origin);
+      this.bloomKick = 0.15;
       this.updateHud('Miss. Chain reset.');
       window.setTimeout(() => {
         if (this.phase === 'repair') this.updateHud('TAP when the green line hits the top mark');
       }, 900);
     }
+  }
+
+  private startReassemble(): void {
+    this.phase = 'reassemble';
+    this.reassembleT = 0;
+    this.reassemblePause = 0;
+    this.reassembleSnapped = false;
+    setHintPulse(this.hud, false);
+    this.updateHud('Snapping wheel back on…');
+    this.bloomKick = 0.45;
+
+    const notch = this.repairWheel.getObjectByName('notch');
+    if (notch) notch.visible = false;
+  }
+
+  private finishReassemble(): void {
+    if (this.reassembleSnapped) return;
+    this.reassembleSnapped = true;
+
+    this.sketchBike.getObjectByName('attached-rear-wheel')?.removeFromParent();
+    attachSketchRearWheel(this.sketchBike);
+    this.repairWheel.visible = false;
+    this.repairArrows.visible = false;
+    this.timingTarget.visible = false;
+
+    createBurst(this.scene, 0x86efac, 28, this.reassembleHub.clone().add(new THREE.Vector3(0, 0, 1.2)));
+    createSparkRing(this.scene, this.reassembleHub.clone().add(new THREE.Vector3(0, 0, 1.2)), 0x22c55e);
+    flashHud(this.hud, '#22c55e');
+    this.shake = 0.06;
+    this.reassemblePause = REASSEMBLE_PAUSE;
+    this.updateHud('Wheel locked.');
   }
 
   private async unlockCutscene(): Promise<void> {
@@ -293,9 +403,12 @@ export class UnluckyThree {
 
     this.repairStage.visible = false;
     this.bike.root.visible = false;
+    this.groundLine.visible = false;
     this.backupBikes.forEach((b) => (b.visible = false));
+    setHintPulse(this.hud, false);
     this.camPos.set(0, 2.2, 8);
     this.camLook.set(0, 1.2, 0);
+    this.bloomKick = 0.5;
     this.onResize();
 
     runCutscene(this.scene, this.container, this.streak, this.totalTaps, () => this.resetRide());
@@ -329,7 +442,9 @@ export class UnluckyThree {
             ? 'Hard stop'
             : this.phase === 'repair'
               ? 'Repair'
-              : 'Cutscene';
+              : this.phase === 'reassemble'
+                ? 'Reassemble'
+                : 'Cutscene';
 
     updateHud(
       this.hud,
@@ -348,29 +463,59 @@ export class UnluckyThree {
     requestAnimationFrame(this.animate);
     const dt = Math.min(this.clock.getDelta(), 0.05);
     const frame = dt * 60;
+    const t = this.clock.elapsedTime;
 
     if (this.phase === 'ride') {
       this.rideTimer += dt * 1000;
       this.scroll += 2.8 * frame;
-      this.bike.frame.rotation.z = Math.sin(this.scroll * 0.06) * 0.03;
+      updateBikeMotion(this.bike, t, true);
       this.bike.frontWheel.rotation.x -= 0.08 * frame;
       this.bike.rearWheel.rotation.x -= 0.08 * frame;
+      this.groundLine.position.y = 0.01 + Math.sin(t * 10) * 0.002;
+      this.groundLine.scale.x = 1 + Math.sin(t * 10) * 0.04;
       if (this.rideTimer > 2200 + Math.random() * 2000) this.triggerBackup();
     } else if (this.phase === 'backup') {
       this.scroll += 0.35 * frame;
       this.backupDepth = Math.min(this.backupDepth + 0.04 * frame, 1);
+      updateBikeMotion(this.bike, t * 0.3, true);
     } else if (this.phase === 'brake') {
       this.brakeTimer += dt * 1000;
       this.scroll *= 0.92;
+      this.bike.root.position.y = 0;
       if (this.brakeTimer > 700) this.enterRepair();
     } else if (this.phase === 'repair') {
       this.wheelAngle = (this.wheelAngle + this.spinSpeed * frame) % 360;
-      this.repairWheel.rotation.z = THREE.MathUtils.degToRad(this.wheelAngle);
+      this.repairWheel.rotation.x = THREE.MathUtils.degToRad(this.wheelAngle);
+      const nearHit = this.angleDistance(this.wheelAngle, TARGET_ANGLE) <= TIMING_WINDOW_DEG;
+      updateTimingTarget(this.timingTarget, t, nearHit);
+      this.repairLight.intensity = nearHit ? 2.4 : 1.2;
+    } else if (this.phase === 'reassemble') {
+      if (this.reassemblePause > 0) {
+        this.reassemblePause -= dt;
+        if (this.reassemblePause <= 0) void this.unlockCutscene();
+      } else {
+        this.reassembleT += dt / REASSEMBLE_DURATION;
+        const p = Math.min(1, this.reassembleT);
+        const eased = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+
+        this.repairWheel.position.lerpVectors(REPAIR_WHEEL_START, this.reassembleHub, eased);
+        const scale = THREE.MathUtils.lerp(1, SKETCH_WHEEL_ATTACH_SCALE, eased);
+        this.repairWheel.scale.setScalar(scale);
+        this.repairWheel.rotation.x += 0.04 * frame;
+
+        this.repairArrows.scale.setScalar(1 - eased);
+        this.timingTarget.scale.setScalar(1 - eased);
+        this.repairLight.intensity = 1.2 + eased * 1.4;
+
+        if (p >= 1 && !this.reassembleSnapped) this.finishReassemble();
+      }
     }
+
+    this.dust.update(dt, this.phase === 'ride', this.phase === 'ride' ? 2.8 : 0.4);
 
     this.layoutBackup();
     scrollWorld(this.world.farLayer, this.world.nearLayer, this.world.props, this.world.dashes, this.scroll);
-    updateSkyTime(this.sky, this.clock.elapsedTime);
+    updateSkyTime(this.sky, t);
 
     this.progressSyncTimer += dt * 1000;
     if (this.progressSyncTimer > 8000) {
@@ -378,21 +523,58 @@ export class UnluckyThree {
       void postProgress(this.best, this.totalTaps);
     }
 
-    const targetCam = this.phase === 'repair' ? REPAIR_CAM : RIDE_CAM;
-    const targetLook = this.phase === 'repair' ? REPAIR_LOOK : RIDE_LOOK;
-    this.camPos.lerp(targetCam, 0.08);
-    this.camLook.lerp(targetLook, 0.08);
+    const targetCam =
+      this.phase === 'repair' || this.phase === 'reassemble'
+        ? REPAIR_CAM
+        : this.phase === 'cutscene'
+          ? this.camPos
+          : RIDE_CAM;
+    const targetLook =
+      this.phase === 'repair' || this.phase === 'reassemble'
+        ? REPAIR_LOOK
+        : this.phase === 'cutscene'
+          ? this.camLook
+          : RIDE_LOOK;
+    if (this.phase !== 'cutscene') {
+      this.camPos.lerp(targetCam, 0.08);
+      this.camLook.lerp(targetLook, 0.08);
+    }
+
+    // Subtle ride camera sway
+    const sway =
+      this.phase === 'ride'
+        ? new THREE.Vector3(Math.sin(t * 0.7) * 0.08, Math.sin(t * 1.1) * 0.05, 0)
+        : new THREE.Vector3(0, 0, 0);
 
     if (this.shake > 0) {
       this.shake *= 0.88;
-      this.camera.position.copy(this.camPos).add(
-        new THREE.Vector3((Math.random() - 0.5) * this.shake, (Math.random() - 0.5) * this.shake, 0)
-      );
+      this.camera.position
+        .copy(this.camPos)
+        .add(sway)
+        .add(new THREE.Vector3((Math.random() - 0.5) * this.shake, (Math.random() - 0.5) * this.shake, 0));
     } else {
-      this.camera.position.copy(this.camPos);
+      this.camera.position.copy(this.camPos).add(sway);
     }
     this.camera.lookAt(this.camLook);
-    this.renderer.render(this.scene, this.camera);
+
+    const baseFov = this.phase === 'repair' || this.phase === 'reassemble' ? 30 : 34;
+    if (this.fovPunch > 0.01) {
+      this.fovPunch *= 0.86;
+      this.camera.fov = baseFov + this.fovPunch;
+      this.camera.updateProjectionMatrix();
+    } else if (Math.abs(this.camera.fov - baseFov) > 0.05) {
+      this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, baseFov, 0.15);
+      this.camera.updateProjectionMatrix();
+    }
+
+    if (this.bloomKick > 0.01) {
+      this.bloomKick *= 0.9;
+      this.postfx.setBloom(0.28 + this.bloomKick);
+    } else {
+      this.postfx.setBloom(this.phase === 'repair' || this.phase === 'reassemble' ? 0.34 : 0.26);
+    }
+
+    this.postfx.render();
   };
 
   dispose(): void {

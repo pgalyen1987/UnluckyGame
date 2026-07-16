@@ -6,6 +6,29 @@ const REAR_X = -0.96;
 const FRONT_X = 0.96;
 const HUB_Y = WHEEL_R;
 
+export const SKETCH_REPAIR_WHEEL_R = 0.72;
+export const SKETCH_WHEEL_ATTACH_SCALE = WHEEL_R / SKETCH_REPAIR_WHEEL_R;
+export const BIKE_REAR_X = REAR_X;
+export const BIKE_FRONT_X = FRONT_X;
+export const BIKE_HUB_Y = HUB_Y;
+
+function sketchMat(color = 0x1e293b): THREE.MeshBasicMaterial {
+  return new THREE.MeshBasicMaterial({ color });
+}
+
+function sketchTube(
+  x1: number,
+  y1: number,
+  z1: number,
+  x2: number,
+  y2: number,
+  z2: number,
+  mat: THREE.Material,
+  r = 0.014
+): THREE.Mesh {
+  return tube(x1, y1, z1, x2, y2, z2, mat, r);
+}
+
 export type BikeRig = {
   root: THREE.Group;
   frame: THREE.Group;
@@ -163,14 +186,17 @@ function createRider(m: ReturnType<typeof getMaterials>, pose: 'ride' | 'fall'):
   pelvis.castShadow = true;
 
   const upperLeg = limb(m.pants, 0.36, 0.062, 0.052);
+  upperLeg.name = 'upperLeg';
   upperLeg.position.set(0.04, 0.94, 0.05);
   upperLeg.rotation.z = pose === 'ride' ? 0.55 : 0.9;
 
   const lowerLeg = limb(m.pants, 0.34, 0.05, 0.042);
+  lowerLeg.name = 'lowerLeg';
   lowerLeg.position.set(0.1, 0.66, 0.08);
   lowerLeg.rotation.z = pose === 'ride' ? 0.05 : 0.35;
 
   const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.06, 0.1), m.shoe);
+  shoe.name = 'shoe';
   shoe.position.set(pose === 'ride' ? 0.02 : -0.12, pose === 'ride' ? 0.48 : 0.52, 0.06);
   shoe.rotation.z = pose === 'ride' ? -0.15 : 0.2;
 
@@ -290,43 +316,205 @@ export function createBike(repairMode = false): BikeRig {
   return { root, frame, frontWheel, rearWheel };
 }
 
-export function createRepairWheel(): THREE.Group {
+/** Side-profile sketch wheel — circle + spokes, rolls on X axis. */
+export function createSketchWheel(radius: number, withNotch = false): THREE.Group {
   const m = getMaterials();
   const group = new THREE.Group();
-  group.name = 'repair-wheel';
+  const line = sketchMat();
 
-  const tire = new THREE.Mesh(
-    new THREE.TorusGeometry(1, 0.12, 28, 72),
-    createTireMaterial(2.5, 1.6)
-  );
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.76, 0.045, 18, 48), m.rim);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.018, 8, 56), line);
+  rim.rotation.y = Math.PI / 2;
 
-  for (let i = 0; i < 12; i++) {
-    const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.7, 0.018), m.rim);
-    spoke.rotation.z = (i * Math.PI) / 6;
+  for (let i = 0; i < 8; i++) {
+    const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.012, radius * 1.92, 0.012), line);
+    spoke.rotation.x = (i * Math.PI) / 4;
     group.add(spoke);
   }
 
-  const notch = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.48, 0.1), m.green);
-  notch.position.y = 0.82;
-  notch.name = 'notch';
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.04, 10), line);
+  hub.rotation.y = Math.PI / 2;
 
-  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.07, 20), m.rim);
-  hub.rotation.x = Math.PI / 2;
+  group.add(rim, hub);
 
-  group.add(tire, rim, hub, notch);
-  setShadows(group);
+  if (withNotch) {
+    const notch = new THREE.Mesh(new THREE.BoxGeometry(0.05, radius * 0.42, 0.02), m.green);
+    notch.position.y = radius * 0.72;
+    notch.name = 'notch';
+    group.add(notch);
+  }
+
+  return group;
+}
+
+function buildSketchFrame(): THREE.Group {
+  const line = sketchMat();
+  const frame = new THREE.Group();
+  frame.name = 'sketch-frame';
+
+  const bbX = -0.06;
+  const bbY = 0.72;
+  const seatX = -0.22;
+  const seatY = 1.08;
+  const headX = 0.68;
+  const headY = 1.18;
+  const headBaseY = headY - 0.18;
+  const headBaseX = headX - 0.04;
+
+  frame.add(
+    sketchTube(REAR_X, HUB_Y, 0, bbX, bbY, 0, line),
+    sketchTube(FRONT_X, HUB_Y, 0, bbX, bbY, 0, line),
+    sketchTube(REAR_X, HUB_Y, 0, seatX, seatY - 0.06, 0, line),
+    sketchTube(seatX, seatY - 0.06, 0, bbX, bbY, 0, line),
+    sketchTube(bbX, bbY, 0, headBaseX, headBaseY, 0, line),
+    sketchTube(seatX, seatY, 0, headX, headY - 0.04, 0, line),
+    sketchTube(FRONT_X, HUB_Y, 0, headX, headBaseY, 0, line),
+    sketchTube(seatX, seatY - 0.04, 0, seatX, seatY + 0.22, 0, line),
+    sketchTube(headX, headY - 0.04, 0, headX + 0.18, headY + 0.02, 0, line),
+    sketchTube(headX + 0.18, headY + 0.02, 0, headX + 0.28, headY - 0.04, 0, line)
+  );
+
+  return frame;
+}
+
+function createSketchRider(pose: 'ride' | 'fall'): THREE.Group {
+  const rider = new THREE.Group();
+  rider.name = 'rider';
+  const line = sketchMat();
+  const accent = sketchMat(0x475569);
+  const lean = pose === 'ride' ? -0.42 : -0.15;
+
+  const torso = sketchTube(0.02, 1.18, 0, 0.2, 1.48, 0, line, 0.012);
+  torso.rotation.z = lean;
+
+  const pelvis = sketchTube(-0.04, 1.02, 0, 0.08, 1.2, 0, line, 0.012);
+  pelvis.rotation.z = lean + 0.1;
+
+  const upperLeg = sketchTube(0.04, 0.92, 0, 0.1, 0.66, 0, accent, 0.01);
+  upperLeg.name = 'upperLeg';
+  upperLeg.rotation.z = pose === 'ride' ? 0.55 : 0.9;
+
+  const lowerLeg = sketchTube(0.1, 0.66, 0, 0.02, 0.48, 0, accent, 0.01);
+  lowerLeg.name = 'lowerLeg';
+  lowerLeg.rotation.z = pose === 'ride' ? 0.05 : 0.35;
+
+  const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.04, 0.04), accent);
+  shoe.name = 'shoe';
+  shoe.position.set(pose === 'ride' ? 0.02 : -0.12, pose === 'ride' ? 0.46 : 0.5, 0);
+  shoe.rotation.z = pose === 'ride' ? -0.15 : 0.2;
+
+  const upperArm = sketchTube(0.18, 1.32, 0, 0.36, 1.16, 0, line, 0.01);
+  upperArm.rotation.z = pose === 'ride' ? -1.05 : -0.6;
+
+  const forearm = sketchTube(0.36, 1.16, 0, 0.46, 1.04, 0, line, 0.01);
+  forearm.rotation.z = pose === 'ride' ? -0.35 : -0.8;
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), line);
+  head.position.set(0.12, 1.62, 0);
+  head.rotation.z = lean + 0.12;
+  head.scale.set(0.95, 1.05, 0.5);
+
+  const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), sketchMat(0xea580c));
+  helmet.position.set(0.12, 1.64, 0);
+  helmet.rotation.z = lean + 0.1;
+  helmet.scale.set(1.02, 0.88, 0.5);
+
+  rider.add(torso, pelvis, upperLeg, lowerLeg, shoe, upperArm, forearm, head, helmet);
+  return rider;
+}
+
+/** Full line-art ride bike with both wheels and a stick rider. */
+export function createSketchRideBike(repairMode = false): BikeRig {
+  const root = new THREE.Group();
+  const frame = buildSketchFrame();
+  frame.name = 'bike-frame';
+
+  const frontWheel = createSketchWheel(WHEEL_R);
+  frontWheel.position.set(FRONT_X, HUB_Y, 0);
+
+  const rearWheel = createSketchWheel(WHEEL_R);
+  rearWheel.position.set(REAR_X, HUB_Y, 0);
+  rearWheel.visible = !repairMode;
+
+  frame.add(frontWheel, rearWheel, createSketchRider('ride'));
+  root.add(frame);
+  return { root, frame, frontWheel, rearWheel };
+}
+
+/** Line-art side profile — frame + front wheel, rear wheel removed for repair. */
+export function createSketchBike(): THREE.Group {
+  const group = new THREE.Group();
+  group.name = 'sketch-bike';
+
+  const frame = buildSketchFrame();
+  const frontWheel = createSketchWheel(WHEEL_R);
+  frontWheel.position.set(FRONT_X, HUB_Y, 0);
+
+  group.add(frame, frontWheel);
+  return group;
+}
+
+/** Attach a ride-sized rear wheel to a sketch bike group. */
+export function attachSketchRearWheel(bike: THREE.Group): THREE.Group {
+  const rearWheel = createSketchWheel(WHEEL_R);
+  rearWheel.position.set(REAR_X, HUB_Y, 0);
+  rearWheel.name = 'attached-rear-wheel';
+  bike.add(rearWheel);
+  return rearWheel;
+}
+
+export function getSketchRearHubLocal(): THREE.Vector3 {
+  return new THREE.Vector3(REAR_X, HUB_Y, 0);
+}
+
+export function createRepairWheel(): THREE.Group {
+  const group = createSketchWheel(SKETCH_REPAIR_WHEEL_R, true);
+  group.name = 'repair-wheel';
+  return group;
+}
+
+/** Small chevrons pointing from the bike toward the detached wheel. */
+export function createRepairArrows(): THREE.Group {
+  const group = new THREE.Group();
+  group.name = 'repair-arrows';
+  const mat = sketchMat(0x64748b);
+
+  for (let i = 0; i < 2; i++) {
+    const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.14, 3), mat);
+    arrow.rotation.z = -Math.PI / 2;
+    arrow.position.set(-0.15 + i * 0.22, 0.52 + i * 0.1, 0);
+    group.add(arrow);
+  }
+
   return group;
 }
 
 export function createVictoryBike(): THREE.Group {
-  const bike = createBike(false);
+  const bike = createSketchRideBike(false);
   const rider = bike.frame.getObjectByName('rider');
   if (rider) rider.visible = false;
-
-  const m = getMaterials();
-  bike.frame.add(createRider(m, 'fall'));
+  bike.frame.add(createSketchRider('fall'));
   return bike.root;
+}
+
+/** Subtle pedaling + bob while riding. */
+export function updateBikeMotion(rig: BikeRig, t: number, riding: boolean): void {
+  if (!riding) return;
+  const bob = Math.sin(t * 10) * 0.012;
+  rig.root.position.y = bob;
+  rig.frame.rotation.z = Math.sin(t * 6) * 0.028;
+
+  const rider = rig.frame.getObjectByName('rider');
+  if (!rider) return;
+  const upper = rider.getObjectByName('upperLeg');
+  const lower = rider.getObjectByName('lowerLeg');
+  const shoe = rider.getObjectByName('shoe');
+  const pedal = Math.sin(t * 12);
+  if (upper) upper.rotation.z = 0.55 + pedal * 0.22;
+  if (lower) lower.rotation.z = 0.05 + pedal * 0.18;
+  if (shoe) {
+    shoe.position.y = 0.48 + pedal * 0.06;
+    shoe.position.x = 0.02 - pedal * 0.04;
+  }
 }
 
 export const BIKE_WHEEL_RADIUS = WHEEL_R;
